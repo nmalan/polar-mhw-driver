@@ -71,6 +71,15 @@ Units: stored as °C s⁻¹, converted to °C day⁻¹ (×86400) in notebook.
 ## Notebooks
 
 ### `notebooks/01_polar_mhw_budget_drivers.ipynb`
+**Purpose:** Single box, 2010–2019. ✅ Ran successfully on Gadi (8 events detected).
+
+### `notebooks/02_polar_mhw_multibox.ipynb`
+**Purpose:** 6-box latitude transect (72.5°W–70°W, 64°S–79°S), 2010–2019, with seasonal breakdown.
+- Loads SST and budget data once for the full bounding region, then loops over boxes.
+- Season assigned by month of `t_peak` (DJF/MAM/JJA/SON).
+- Plots: grouped bar charts, heatmaps by box, 4×2 seasonal heatmap grid.
+
+### `notebooks/01_polar_mhw_budget_drivers.ipynb`  ← original single-box
 **Purpose:** First-pass analysis for a single box, 2010–2019.
 
 **Workflow inside the notebook:**
@@ -111,7 +120,6 @@ Units: stored as °C s⁻¹, converted to °C day⁻¹ (×86400) in notebook.
 
 - [ ] Expand to full time series (confirm budget file availability for outputs 305–356)
 - [ ] Interpret composite results: which terms dominate onset vs decline?
-- [ ] Try several different boxes (move `sreg`) to assess spatial variability across 60–90°W
+- [ ] Run notebook 02 on Gadi and evaluate 6-box + seasonal results
 - [ ] Add spatial maps of temperature anomaly at onset/peak/decline (following reference notebook)
-- [ ] Consider splitting by season (austral summer vs winter MHWs)
-- [ ] Consider expanding to a tiling approach (following Benjamin's methodology) once single-box analysis is validated
+- [ ] Consider expanding to a tiling approach (following Benjamin's methodology) once multi-box analysis is validated
