@@ -1,0 +1,80 @@
+Hi Neil,
+
+Thanks for the chat this morning!
+I digged back into my code to generate the tiles, I had implemented a number of criteria to eliminate some of the tiles. From my paper (bold from me to emphasize the criteria):
+"The MHW detection algorithm is not run on individual grid cells but rather on tiles of 20 by 20 grid cells, and tiles with less than 300 grid cells are discarded. One benefit of calculating the heat budget over tiles is to avoid the impacts of lateral eddy viscosity that may be large for individual grid cells. Another benefit is that the occurrence MHWs between individual tiles are less correlated than that between individual grids. The mixed layer temperature of a grid cell is strongly correlated with the temperature of the surrounding grid cells and this correlation was found to decrease for grid cells further than 10 grid cells away, although with strong spatial variability (not shown). Using tiles of 20 by 20 grid cells thus increases the independence between detected MHW events at adjacent tiles. The tiles are further filtered out by excluding tiles where the March ice concentration never exceeds 15% in the 2014 to 2021 period, to constrain our study on seasonally ice‐impacted regions (Figure 1a, dark shade). A total of 160 tiles were found to match those criteria."
+
+I would be of the opinion that we don't need the sea ice concentration filter, we could remove it. We should also change the definition of the Arctic and AA, using for example >60°S for the Southern Ocean, and maybe something similar for the Arctic. I'll send an email to Marylou to ask her what definition she wants us to use for Arctic.
+
+Below is the piece of code I used to generate an array tiling the domain into those 20x20 tiles, with the associated filters. It's clearly not the cleanest piece of code... I remember trying to use xr.coarsen to try and get those tiles, but there were issues around the North Pole and dateline for the latitude and longitude.
+Once I had this kind of mask which assigned an ID to each grid cell (the ID corresponds to the tile the grid cell is included in), I looped over the tiles to extract the properties I needed over each tile, then used either a mean or a sum to aggregate the property over the tile. I hope this makes sense. I then saved one file per tile (160 tiles in total). It's clearly not the best way to do things, and I am sure I would do things better now, but that was actually my first project in python (I was using matlab before). It's good to see I have done some progress in python fluency since then ^^
+
+Best,
+Benjamin
+
+```
+# %%
+# Load ice concentration and create a mask based on sea ice concentration
+Path2ice = Path('/home/brichaud/Projects/SiberianHW/data/processed/')
+ds_ice = xr.open_dataset(Path2ice.joinpath('CREG025E-PISCES_era5_1m_20142021_iicefrac.nc'))
+ds_ice = ds_ice.rename({"nav_lon":'longitude', "nav_lat":'latitude', 'time_counter':'time'})
+# Get the maximum ice extent and create a mask
+MarchExtent = ds_ice.iicefrac.groupby('time.month').min().isel(month=2)
+Mask_ice = xr.where(MarchExtent>0.15,1,0)
+
+# %%
+# Create arrays X and Y of increasing integers repeating each one 20 times.
+# Size those X and Y to match the grid dimensions
+ngc=20
+x_grid=np.repeat(np.arange(0,Mask_ice.x.size/ngc, dtype=int),ngc)[:Mask_ice.x.size]
+y_grid=np.repeat(np.arange(0,Mask_ice.y.size/ngc, dtype=int),ngc)[:Mask_ice.y.size]
+# Create a mesh with those two arrays
+xx, yy = np.meshgrid(x_grid, y_grid)
+# Create a dataarray with values corresponding to an identifier for each tile
+nbox = xr.DataArray((xx + yy*(x_grid.max()+1)),dims=Mask_ice.dims)
+# Mask that da where there is land and no ice
+nbox = nbox.where(Mask_ice).drop_vars('month')
+# nbox.to_dataset(name='TileNumber').to_netcdf(Path2ice.joinpath('Tiles_3Oceans_20x20_4HB.nc'))
+# Count the number of unmasked grid cells in each tile, by looping
+count=dict()
+for i,val in enumerate(np.unique(nbox.values)):
+    if not np.isnan(val):
+        count[int(val)] = (nbox == val).values.sum()
+
+# %%
+# Far from elegant, but it seems to work: 
+# try to further filter by keeping tiles with more than ngcmin (300 initially)
+ngcmin = 300
+# Loop over count values and create boolean
+bool_bigtiles = [val>=ngcmin for val in count.values()]
+# Retrieve the list of the tile identifiers
+id_tiles_all = np.array([item for item in count.items()])
+# Only keep the tiles with more than ngcmin grid cells
+id_tiles2keep = id_tiles_all[bool_bigtiles,0]
+
+# %%
+# Calculate the average latitude and longitude for each tile
+lat_boxes = []
+lon_boxes = []
+# loop over tiles
+for ind, nb in enumerate(id_tiles2keep):
+    # Get the mean of the latitude
+    lat_box = nbox.latitude.where(nbox==nb).mean(dim=['x','y'],skipna=True)
+    lat_boxes.append(lat_box)
+    # longitude is trickier because of dateline. 
+    # Need to check if I have longitudes that are on both side of dateline
+    lon_box = nbox.longitude.where(nbox==nb)
+    # If my longitude has a risk of being close to the dateline, convert to 0-360°
+    if (lon_box>90).any() and (lon_box<-90).any() and ~(abs(lon_box)<10).any():
+        lon_box_360 = (lon_box + 360.)%360.
+        # Calculate mean
+        meanlon = lon_box_360.mean(dim=['x','y'],skipna=True)
+        # Revert to -180 - 180
+        meanlon = (meanlon + 180) % 360 - 180
+    else:
+        meanlon = lon_box.mean(dim=['x','y'],skipna=True)
+    lon_boxes.append(meanlon)
+
+# %%
+tiles_over300 = nbox.where(nbox.isin(id_tiles2keep))
+# tiles_over300.rename('tiles').to_netcdf(Path2ice.joinpath('TilesMHWAnalysis_3Oceans_over300.nc'))
