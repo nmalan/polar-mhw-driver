@@ -14,9 +14,9 @@ Closely follows the approach in [rmholmes/access-om2-sst-budget](https://github.
 | 1 | Define study region and box | ✅ Done |
 | 2 | Set up local git repo | ✅ Done |
 | 3 | Write first analysis notebook | ✅ Done |
-| 4 | Push to GitHub remote | 🔲 In progress |
-| 5 | Verify data/budget file availability on Gadi | 🔲 Todo |
-| 6 | Run notebook on Gadi | 🔲 Todo |
+| 4 | Push to GitHub remote | ✅ Done |
+| 5 | Verify data/budget file availability on Gadi | ✅ Done (2010–2019 confirmed) |
+| 6 | Run notebook on Gadi | ✅ Done |
 | 7 | Evaluate results, expand to more boxes | 🔲 Todo |
 
 ---
@@ -43,7 +43,7 @@ Closely follows the approach in [rmholmes/access-om2-sst-budget](https://github.
 | `post_processed_diags/mlt_budget_online_stavg/mlt_budget_stavg_daily_online_output336-365_monthly_mean.ncea.nc` | Budget climatology (monthly) |
 
 **Output numbering:** output305 = 1958, output366 = 2019 (one file per year).  
-**Currently loading:** outputs 357–366 (2010–2019) — expand once budget file availability is confirmed.
+**Currently loading:** outputs 357–366 (2010–2019) — confirmed working.
 
 **Check available budget files on Gadi:**
 ```bash
@@ -101,11 +101,17 @@ Units: stored as °C s⁻¹, converted to °C day⁻¹ (×86400) in notebook.
 
 ---
 
+## Results (first run — single box, 2010–2019)
+
+- **8 MHW events detected** in the Drake Passage box (72.5°W–70°W, 66.5°S–64°S)
+- Temperature values physically realistic; budget closure ≈ 0 throughout
+- Overview plot visually consistent with threshold exceedances
+
 ## Planned next steps
 
-- [ ] Confirm budget file availability and expand to full time series if possible
-- [ ] Inspect results: which terms dominate onset vs decline?
-- [ ] Try several different boxes (move `sreg`) to assess spatial variability
+- [ ] Expand to full time series (confirm budget file availability for outputs 305–356)
+- [ ] Interpret composite results: which terms dominate onset vs decline?
+- [ ] Try several different boxes (move `sreg`) to assess spatial variability across 60–90°W
 - [ ] Add spatial maps of temperature anomaly at onset/peak/decline (following reference notebook)
 - [ ] Consider splitting by season (austral summer vs winter MHWs)
 - [ ] Consider expanding to a tiling approach (following Benjamin's methodology) once single-box analysis is validated
