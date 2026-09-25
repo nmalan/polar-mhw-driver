@@ -188,5 +188,32 @@ check(np.shape(tab.loc[1]) == (1, 4),
       'tally .loc[1] is a 1x4 DataFrame (required by ultraplot bar(mean=True))')
 check(float(tab.sum().sum()) == 4.0, 'every term is assigned exactly one rank')
 
+# ---------------------------------------------------------------- calendar skew
+SKEW = 2
+n = 400
+true_dates = np.arange(np.datetime64('2010-01-01'), np.datetime64('2010-01-01') + n)
+mlt_dates = true_dates - np.timedelta64(SKEW, 'D')
+model_idx = np.arange(n).astype(float)
+budget = xr.DataArray(model_idx, dims='time', coords={'time': true_dates})
+doy_true = xr.DataArray(np.arange(1, 367).astype(float), dims='dayofyear',
+                        coords={'dayofyear': np.arange(1, 367)})
+
+def _anom(relabel_first):
+    b = budget.assign_coords(time=budget.time - np.timedelta64(SKEW, 'D')) if relabel_first else budget
+    c = doy_true.sel(dayofyear=b.time.dt.dayofyear).drop_vars('dayofyear').assign_coords(time=b.time)
+    a = b - c
+    return a if relabel_first else a.assign_coords(time=a.time - np.timedelta64(SKEW, 'D'))
+
+good, bad = _anom(False), _anom(True)
+exp = [model_idx[k] - float(xr.DataArray(true_dates[k:k+1], dims='t').dt.dayofyear[0])
+       for k in range(n)]
+check(all(np.isclose(float(good.sel(time=mlt_dates[k])), exp[k]) for k in range(n)),
+      'budget anomaly: climatology removed on true dates, then relabelled, lands on the '
+      'right model day for all {0} days'.format(n))
+check(not np.isclose(float(bad.sel(time=mlt_dates[120])), exp[120]),
+      'relabelling BEFORE removing the climatology is wrong (off by the doy shift)')
+check(abs(float(bad.sel(time=mlt_dates[0])) - exp[0]) > 300,
+      'and is catastrophically wrong across the year boundary, where dayofyear wraps')
+
 print('\n' + ('ALL CHECKS PASSED' if not fails else 'FAILURES:\n  ' + '\n  '.join(fails)))
 sys.exit(1 if fails else 0)
