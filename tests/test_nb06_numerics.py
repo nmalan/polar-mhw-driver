@@ -64,7 +64,7 @@ mask_vals[:6, :15] = 0.0                      # a patch of land
 area = area.where(mask_vals > 0)              # land -> NaN area, as in the real file
 mask = xr.DataArray(mask_vals, dims=dims, coords=coords)
 
-boxes, n_fold = gen_tiles(mask, geolat, geolon, ny_full=None)
+boxes, n_fold = gen_tiles(mask, geolat, geolon, area, ny_full=None)
 check(len(boxes) > 0, 'generate_tiles returns tiles ({0})'.format(len(boxes)))
 check(all(b['ocean_frac'] >= 0.75 for b in boxes), 'every kept tile is >=75% ocean')
 check(all(-80 <= b['lat_center'] <= -60 for b in boxes), 'tile lat centres inside the domain')
@@ -97,10 +97,10 @@ else:
 b0 = boxes[0]
 check('lon_center_circular' in b0 and 'lon_center_plain' in b0,
       'both longitude conventions are stored on every tile')
-boxes_plain, _ = gen_tiles(mask, geolat, geolon, ny_full=None, lon_center='plain')
+boxes_plain, _ = gen_tiles(mask, geolat, geolon, area, ny_full=None, lon_center='plain')
 check(all(abs(b['lon_center'] - b['lon_center_plain']) < 1e-9 for b in boxes_plain),
       "LON_CENTER='plain' reproduces NB04's arithmetic mean")
-boxes_circ, _ = gen_tiles(mask, geolat, geolon, ny_full=None, lon_center='circular')
+boxes_circ, _ = gen_tiles(mask, geolat, geolon, area, ny_full=None, lon_center='circular')
 check(all(abs(b['lon_center'] - b['lon_center_circular']) < 1e-9 for b in boxes_circ),
       "LON_CENTER='circular' uses the circular mean")
 check(any(b['nb04_bbox_shrinks'] for b in boxes) or True,
@@ -110,14 +110,22 @@ check(any(b['nb04_bbox_shrinks'] for b in boxes) or True,
 # a tile with a wholly-land interior row must be flagged as one NB04's drop=True shrinks
 mv = np.ones((ny, nx)); mv[25, :] = 0.0
 m2 = xr.DataArray(mv, dims=dims, coords=coords)
-bx2, _ = gen_tiles(m2, geolat, geolon, ny_full=None)
+bx2, _ = gen_tiles(m2, geolat, geolon, area, ny_full=None)
 touched = [b for b in bx2 if b['y0'] <= 25 < b['y1']]
 check(bool(touched) and all(b['nb04_bbox_shrinks'] for b in touched),
       'an all-land row flags every tile it crosses ({0} tiles)'.format(len(touched)))
 
+check(all(np.isfinite(b['area_m2']) and b['area_m2'] > 0 for b in boxes),
+      'every tile carries a finite positive area_m2')
+tot = sum(b['area_m2'] for b in boxes)
+direct = float(area.where(mask > 0).sum())
+covered = sum(float(box_slice(area, b).sum()) for b in boxes)
+check(abs(tot - covered) / covered < 1e-9,
+      'tile areas equal the summed area_t over their ocean cells')
+
 # fold-row detection
-boxes_f, n_f = gen_tiles(mask, geolat, geolon, ny_full=ny, drop_fold_row=True)
-boxes_k, _ = gen_tiles(mask, geolat, geolon, ny_full=ny, drop_fold_row=False)
+boxes_f, n_f = gen_tiles(mask, geolat, geolon, area, ny_full=ny, drop_fold_row=True)
+boxes_k, _ = gen_tiles(mask, geolat, geolon, area, ny_full=ny, drop_fold_row=False)
 check(n_f > 0 and len(boxes_k) - len(boxes_f) == n_f,
       'DROP_FOLD_ROW removes exactly the {0} fold-touching tiles'.format(n_f))
 
