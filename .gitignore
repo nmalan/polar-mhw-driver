@@ -15,8 +15,10 @@ __pycache__/
 *.h5
 *.hdf5
 
-# Figures output
+# Figures output — the notebooks embed them as outputs, which GitHub renders,
+# so the standalone copies do not need to be in history as well.
 figures/
+plots/
 
 # OS
 .DS_Store
