@@ -15,10 +15,12 @@ __pycache__/
 *.h5
 *.hdf5
 
-# Figures output — the notebooks embed them as outputs, which GitHub renders,
-# so the standalone copies do not need to be in history as well.
+# Figures — plots/ IS tracked, so the full-resolution figures written on Gadi come
+# back to the laptop on a pull. The notebooks also embed lower-resolution copies as
+# cell outputs, and those are what GitHub renders inline; plots/ holds the version to
+# actually use in the chapter. Note that every committed regeneration stays in history
+# permanently, so commit figures when they are worth keeping, not on every run.
 figures/
-plots/
 
 # OS
 .DS_Store
